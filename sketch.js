@@ -21,21 +21,19 @@ function setup() {
   button.mousePressed(takesnap); //when the button is pressed, call the function called "takesnap"
   video.hide();
 
-  text("download your dorsaled image", 760, windowHeight - 180);
-  download = createButton('download image'); //create a button called "snap"
-  download.position(760, windowHeight - 165);
-  download.attribute('disabled', '');
-  download.mousePressed(download);
-
 }
 
 function draw() {
+  textSize(36);
+  text("Instagram: Take and Post Image", 30, 100);
+  textSize(18);
   
-  image(video, 30, (windowHeight/2) - 320, 640, 480);
-  button.position(30, windowHeight - 165);
-  text("click me to take a photo", 30, windowHeight - 180);
+  image(video, 30, (windowHeight/2) - 220, 640, 480);
+  button.position(30, windowHeight - 90);
+  text("click me to take a photo", 30, windowHeight - 100);
 
   if (maskImg) {
+    text("face detected...", 760, windowHeight - 100);
     maskImg.loadPixels();
     for (let i=0; i<maskImg.pixels.length; i+=4) {
       maskImg.pixels[i+3] = 255 - maskImg.pixels[i+0];
@@ -43,13 +41,10 @@ function draw() {
     maskImg.updatePixels(); 
 
 
-    image(backImg, 760, (windowHeight/2) - 320, 640, 480);
+    image(backImg, 760, (windowHeight/2) - 220, 640, 480);
 
     origImg.mask(maskImg);
-    image(origImg, 760, (windowHeight/2) - 320);
-
-    //image(maskImg, 760, (windowHeight/2) - 320, 640, 480);
-    download.removeAttribute('disabled', '');
+    image(origImg, 760, (windowHeight/2) - 220);
   }
   
   
@@ -91,11 +86,4 @@ function takesnap() {
 
     });
   }, 'image/png');
-}
-
-function download() {
-  let portion = get(760, (windowHeight/2) - 320, 640, 480); // x, y, width, height
-  setTimeout(() => {
-    portion.save('dorsaled_image', 'png');
-  }, 100);
 }
