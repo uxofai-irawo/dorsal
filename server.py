@@ -2,10 +2,6 @@ from flask import Flask, request, send_file
 from flask_cors import CORS
 import mediapipe as mp
 import numpy as np
-
-import requests
-import base64
-
 import cv2
 from PIL import Image
 import io
@@ -13,9 +9,14 @@ import io
 app = Flask(__name__)
 CORS(app)  # Allow cross-origin from p5.js
 
-# face detection, not face mask
+# Initialize MediaPipe face detection
 mp_face_detection = mp.solutions.face_detection
-face_detection = mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5)
+
+# Create both detectors for different ranges
+detectors = [
+    mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.05),
+    mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.05)
+]
 
 @app.route('/mask-face', methods=['POST'])
 def mask_face():
@@ -26,105 +27,85 @@ def mask_face():
     image = Image.open(file.stream).convert('RGB')
     image_np = np.array(image)
 
-    h, w = image_np.shape[:2] # NEW THING (moved from within "for detection in results.detections")
+    h, w = image_np.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
 
-    # Prepare a blank black mask
-    #mask = np.zeros(image_np.shape[:2], dtype=np.uint8)
-    mask = np.zeros((h, w), dtype=np.uint8) # NEW THING
+    all_detections = []
 
-    # Run face detection
-    results = face_detection.process(cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+    # Run both detectors and combine results
+    for detector in detectors:
+        results = detector.process(cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+        if results.detections:
+            all_detections.extend(results.detections)
 
-    if results.detections:
-        for detection in results.detections:
-            bbox = detection.location_data.relative_bounding_box
+    for detection in all_detections:
+        bbox = detection.location_data.relative_bounding_box
+        x = int(bbox.xmin * w)
+        y = int(bbox.ymin * h)
+        box_width = int(bbox.width * w)
+        box_height = int(bbox.height * h)
 
-            x = int(bbox.xmin * w)
-            y = int(bbox.ymin * h)
-            box_width = int(bbox.width * w)
-            box_height = int(bbox.height * h)
+        # Scale box size
+        width_scale = 1.2
+        height_scale = 1.5
 
-            # Scale box size
-            width_scale = 1.7  # make box 1.5x the face width
-            height_scale = 2  # make box 1.8x the face height
+        cx = x + box_width // 2
+        cy = y + box_height // 2
 
-            # Compute center of the box
-            cx = x + box_width // 2
-            cy = y + box_height // 2
+        half_w = int(box_width * width_scale / 2)
+        half_h = int(box_height * height_scale / 2)
 
-            # New half-width and half-height after scaling
-            half_w = int(box_width * width_scale / 2)
-            half_h = int(box_height * height_scale / 2)
+        x1 = max(cx - half_w, 0)
+        y1 = max(cy - half_h, 0)
+        x2 = min(cx + half_w, w)
+        y2 = min(cy + half_h, h)
 
-            # Compute expanded rectangle coordinates
-            x1 = max(cx - half_w, 0)
-            y1 = max(cy - half_h, 0)
-            x2 = min(cx + half_w, w)
-            y2 = min(cy + half_h, h)
+        cv2.rectangle(mask, (x1, y1), (x2, y2), 255, thickness=-1)
 
-            # Fill rectangle in mask
-            cv2.rectangle(mask, (x1, y1), (x2, y2), 255, thickness=-1)
+    print(f"Detected {len(all_detections)} face(s)")
 
-'''
-    # NEW NEW NEW FOR GRADIO
-    # Convert mask to PIL Image
-    mask_img = Image.fromarray(mask)
+    _, buffer = cv2.imencode('.jpg', mask)
+    io_buf = io.BytesIO(buffer)
 
-    inpainted = send_to_gradio(image, mask_img)
-    if inpainted is None:
-        return 'Gradio request failed', 500
-    
-    # Return result image as JPEG
-    buf = io.BytesIO()
-    inpainted.save(buf, format='JPEG')
-    buf.seek(0)
-    return send_file(buf, mimetype='image/jpeg')
+    return send_file(io_buf, mimetype='image/png')
 
-    ##########################
-
-    # Convert mask to JPG to send back
-    #_, buffer = cv2.imencode('.jpg', mask)
-    #io_buf = io.BytesIO(buffer)
-
-    #return send_file(io_buf, mimetype='image/jpg')
-
-
-# this handles the stable diffusion
-def pil_to_base64(pil_img):
-    buffered = io.BytesIO()
-    pil_img.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-def send_to_gradio(image, mask):
-    img_b64 = pil_to_base64(image)
-    mask_b64 = pil_to_base64(mask)
-
-    payload = {
-        "data": [
-            f"data:image/jpeg;base64,{img_b64}",
-            f"data:image/jpeg;base64,{mask_b64}"
-        ]
-    }
-
-    try:
-        response = requests.post(
-            "https://d848045d1402d6c3c2.gradio.live/inpaint",  # likely your endpoint
-            json=payload
-        )
-
-        if response.status_code == 200:
-            output_b64 = response.json()['data'][0]  # this is usually a base64 string
-            # Remove data:image/jpeg;base64, prefix if present
-            base64_data = output_b64.split(",")[-1]
-            img_bytes = io.BytesIO(base64.b64decode(base64_data))
-            return Image.open(img_bytes)
-        else:
-            print(f"Gradio returned error {response.status_code}: {response.text}")
-            return None
-    except Exception as e:
-        print("Error calling Gradio:", str(e))
-        return None
-
-'''
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+'''
+
+@app.route('/mask-face', methods=['POST'])
+def mask_face():
+    file = request.files['image']
+    img = Image.open(file.stream).convert('RGB')
+    image = np.array(img)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    mp_face_mesh = mp.solutions.face_mesh
+    face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True)
+
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_image)
+
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            h, w, _ = image.shape
+            points = [(int(lm.x * w), int(lm.y * h)) for lm in face_landmarks.landmark]
+            FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361,
+                         288, 397, 365, 379, 378, 400, 377, 152, 148, 176,
+                         149, 150, 136, 172, 58, 132, 93, 234, 127, 162,
+                         21, 54, 103, 67, 109]
+            oval_pts = np.array([points[i] for i in FACE_OVAL], dtype=np.int32)
+            cv2.fillPoly(mask, [oval_pts], 255)
+
+    is_success, buffer = cv2.imencode(".png", mask)
+    io_buf = io.BytesIO(buffer)
+    return send_file(io_buf, mimetype='image/png')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+'''

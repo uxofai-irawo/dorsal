@@ -12,9 +12,22 @@ let taken = false;
 let state = 0;
 let snapped = true;
 
+let mClient;
+
 function preload() {
-  screenone = loadImage("step1.png");
-  screentwo = loadImage("step2.png")
+  one = loadImage("step1.png");
+  two = loadImage("step2.png");
+  three = loadImage("step3.png");
+  four = loadImage("step4.png");
+  five = loadImage("step5.png");
+  six = loadImage("step6.png");
+  seven = loadImage("step7.png");
+  eight = loadImage("step8.png");
+  nine = loadImage("step9.png");
+  ten = loadImage("step10.png");
+  eleven = loadImage("step11.png");
+  twelve = loadImage("step12.png");
+
 }
 
 function setup() {
@@ -29,7 +42,6 @@ function setup() {
  
   upload = createFileInput(handleFileUpload);
   upload.position((windowWidth/3), windowHeight - 120, 640*0.9, 480*0.9); // Position it under the snap button
-  //upload.hide();
 
   fill(0);
   rect((windowWidth/14), (windowHeight/10), 640*0.9, 480*0.9);
@@ -38,22 +50,47 @@ function setup() {
 
 function draw() {
   //background(255);
+  console.log(state);
+  upload.hide();
 
   // state managment
   if (state == 0) {
-    image(screenone, 0, 0, windowHeight, windowHeight);
+    image(one, 0, 0, windowHeight, windowHeight);
     next = createButton('next');
     next.position((windowWidth/11)*5, (windowHeight/21))
     next.mousePressed(nextPage);
   } else if (state == 1) {
-    image(screentwo, 0, 0, windowHeight, windowHeight);
-    //upload.hide();
+    image(two, 0, 0, windowHeight, windowHeight);
+    
+  } else if (state ==2) {
+    image(three, 0, 0, windowHeight, windowHeight);
+  } else if (state == 3) {
+    image(four, 0, 0, windowHeight, windowHeight);
+  } else if (state == 4) {
+    image(five, 0, 0, windowHeight, windowHeight);
+  } else if (state == 5) {
+    image(six, 0, 0, windowHeight, windowHeight);
+  } else if (state == 6) {
+    image(seven, 0, 0, windowHeight, windowHeight);
+  } else if (state == 7) {
+    image(eight, 0, 0, windowHeight, windowHeight);
+  } else if (state == 8) {
+    image(nine, 0, 0, windowHeight, windowHeight);
+  } else if (state == 9) {
+    image(ten, 0, 0, windowHeight, windowHeight);
+  } else if (state == 10) {
+    image(eleven, 0, 0, windowHeight, windowHeight);
+  } else if (state == 11) {
+    image(twelve, 0, 0, windowHeight, windowHeight);
+  } else if (state > 11) {
+    state = 0;
   }
+
   if (snapped == false) {
     image(origImg, (windowWidth/14), (windowHeight/10), 640*0.9, 480*0.9);
   }
 
-  // IDK IF I ACTUALLY NEED THIS BC IM DOING TWO SEPARATE SCREENS
+  /* IDK IF I ACTUALLY NEED THIS BC IM DOING TWO SEPARATE SCREENS
   if (taken) {
     if (snapped) {
       fill(0);
@@ -76,13 +113,10 @@ function draw() {
     }
     maskImg.updatePixels(); 
 
-
-    //image(backImg, (windowWidth/14), (windowHeight/10), 640*0.9, 480*0.9);
-
     origImg.mask(maskImg);
     image(origImg, (windowWidth/14), (windowHeight/10), 640*0.9, 480*0.9);
   }
-  
+  */
   
 }
 
@@ -91,11 +125,9 @@ function takesnap() {
   
   origImg = video.get();
   taken = true;
-
-  sendImageToServer(origImg);
-
 }
 
+// this generates a mask and regular image using mediapipe
 function sendImageToServer(img) {
   const canvas = createGraphics(img.width, img.height);
   canvas.image(img, 0, 0);
@@ -119,8 +151,8 @@ function sendImageToServer(img) {
       });
     });
   }, 'image/jpg');
-}
 
+}
 
 function handleFileUpload(file) {
   if (file.type === 'image') {
@@ -145,10 +177,15 @@ function handleFileUpload(file) {
 
 function nextPage() {
   state = state + 1;
+  if (state == 1) {
+    sendImageToServer(origImg);
+  }
 }
+
 
 function keyPressed() {
   if (key === ' ') {
-    takesnap(); // Call your function
+    //takesnap(); // Call your function
+    state = state - 1;
   }
 }
