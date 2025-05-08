@@ -7,7 +7,6 @@ let maskImg;
 let origImg;
 let backImg;
 let screenone;
-let words = "snap a photo";
 let taken = false;
 let state = 0;
 let snapped = true;
@@ -15,18 +14,18 @@ let snapped = true;
 let mClient;
 
 function preload() {
-  one = loadImage("step1.png");
-  two = loadImage("step2.png");
-  three = loadImage("step3.png");
-  four = loadImage("step4.png");
-  five = loadImage("step5.png");
-  six = loadImage("step6.png");
-  seven = loadImage("step7.png");
-  eight = loadImage("step8.png");
-  nine = loadImage("step9.png");
-  ten = loadImage("step10.png");
-  eleven = loadImage("step11.png");
-  twelve = loadImage("step12.png");
+  one = loadImage("step9.png");
+  two = loadImage("step10.png");
+  three = loadImage("step11.png");
+  four = loadImage("step12.png");
+  five = loadImage("step13.png");
+  six = loadImage("step14.png");
+  seven = loadImage("step15.png");
+  eight = loadImage("step16.png");
+  nine = loadImage("step17.png");
+  ten = loadImage("step18.png");
+  eleven = loadImage("step19.png");
+  twelve = loadImage("step20.png");
 
 }
 
@@ -35,6 +34,7 @@ function setup() {
   createCanvas(windowWidth, windowHeight-10);
   //background(174, 198, 207);
   textSize(18);
+  /*
   video = createCapture(VIDEO,{ flipped:true });
   video.hide();
 
@@ -42,23 +42,19 @@ function setup() {
  
   upload = createFileInput(handleFileUpload);
   upload.position((windowWidth/3), windowHeight - 120, 640*0.9, 480*0.9); // Position it under the snap button
+  */
 
   fill(0);
   rect((windowWidth/14), (windowHeight/10), 640*0.9, 480*0.9);
-  
 }
 
 function draw() {
   //background(255);
   console.log(state);
-  upload.hide();
 
   // state managment
   if (state == 0) {
     image(one, 0, 0, windowHeight, windowHeight);
-    next = createButton('next');
-    next.position((windowWidth/11)*5, (windowHeight/21))
-    next.mousePressed(nextPage);
   } else if (state == 1) {
     image(two, 0, 0, windowHeight, windowHeight);
     
@@ -175,11 +171,8 @@ function handleFileUpload(file) {
   }
 }
 
-function nextPage() {
+function mouseClicked(){
   state = state + 1;
-  if (state == 1) {
-    sendImageToServer(origImg);
-  }
 }
 
 

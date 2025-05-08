@@ -14,8 +14,8 @@ mp_face_detection = mp.solutions.face_detection
 
 # Create both detectors for different ranges
 detectors = [
-    mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.05),
-    mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.05)
+    mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.2),
+    mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.2)
 ]
 
 @app.route('/mask-face', methods=['POST'])
@@ -38,16 +38,21 @@ def mask_face():
         if results.detections:
             all_detections.extend(results.detections)
 
+    box_dims = [];
+
     for detection in all_detections:
+        score = detection.score[0]
         bbox = detection.location_data.relative_bounding_box
         x = int(bbox.xmin * w)
         y = int(bbox.ymin * h)
         box_width = int(bbox.width * w)
         box_height = int(bbox.height * h)
 
+        print(f"Score: {score}, BBox: {bbox}")
+
         # Scale box size
-        width_scale = 1.2
-        height_scale = 1.5
+        width_scale = 1.5
+        height_scale = 2
 
         cx = x + box_width // 2
         cy = y + box_height // 2
@@ -55,11 +60,30 @@ def mask_face():
         half_w = int(box_width * width_scale / 2)
         half_h = int(box_height * height_scale / 2)
 
+        # maybe store this somewhere else, id which bounding box is the most confident, and then draw the masks? you need to 
+        # keep track of the width and height and things
         x1 = max(cx - half_w, 0)
         y1 = max(cy - half_h, 0)
         x2 = min(cx + half_w, w)
         y2 = min(cy + half_h, h)
+        
+        # add each of the boxes to an array
+        box_dims.append((x1,y1,x2,y2, detection.score[0]))
+    
+    # sort the array of boxes
+    box_dims.sort(key=lambda x: x[4])
+    print(f"All box dims (sorted by confidence):")
+    for i, box in enumerate(box_dims):
+        print(f"Box {i}: Score {box[4]}, Coords {box[:4]}")
 
+    # DEBUG: check which boxes are being masked
+    print("Boxes being masked (excluding most confident):")
+    for box in box_dims[0:-1]:
+        print(f"Masking box: {box}")
+
+    #Draw rectangles around all the boxes except the biggest one
+    for x1,y1,x2,y2,box_area in box_dims[0:-1]:
+        # this would be a sencond forloop where all the ones that are not the biggest/most confident get masked
         cv2.rectangle(mask, (x1, y1), (x2, y2), 255, thickness=-1)
 
     print(f"Detected {len(all_detections)} face(s)")
@@ -71,41 +95,3 @@ def mask_face():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-'''
-
-@app.route('/mask-face', methods=['POST'])
-def mask_face():
-    file = request.files['image']
-    img = Image.open(file.stream).convert('RGB')
-    image = np.array(img)
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True)
-
-    mask = np.zeros(image.shape[:2], dtype=np.uint8)
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb_image)
-
-    if results.multi_face_landmarks:
-        for face_landmarks in results.multi_face_landmarks:
-            h, w, _ = image.shape
-            points = [(int(lm.x * w), int(lm.y * h)) for lm in face_landmarks.landmark]
-            FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361,
-                         288, 397, 365, 379, 378, 400, 377, 152, 148, 176,
-                         149, 150, 136, 172, 58, 132, 93, 234, 127, 162,
-                         21, 54, 103, 67, 109]
-            oval_pts = np.array([points[i] for i in FACE_OVAL], dtype=np.int32)
-            cv2.fillPoly(mask, [oval_pts], 255)
-
-    is_success, buffer = cv2.imencode(".png", mask)
-    io_buf = io.BytesIO(buffer)
-    return send_file(io_buf, mimetype='image/png')
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
-'''

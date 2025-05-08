@@ -6,3 +6,16 @@ html, body {
 canvas {
   display: block;
 }
+
+.button { 
+  background-color: #1c87c9; 
+  border: none; 
+  color: white; 
+  padding: 5px 10px; 
+  text-align: center; 
+  text-decoration: none; 
+  display: inline-block; 
+  font-size: 12px; 
+  margin: 2px 2px;
+  cursor: pointer; 
+} 
